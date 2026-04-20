@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Neon Music Visualizer</title>
+    <style>
+        :root {
+            --neon-cyan: #00f2ff;
+            --neon-pink: #ff00ff;
+            --glass-bg: rgba(0, 0, 0, 0.8);
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        #viewer-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        /* Sidebar HUD */
+        #sidebar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 260px;
+            height: 100vh;
+            background: var(--glass-bg);
+            border-right: 1px solid var(--neon-cyan);
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            z-index: 10;
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            backdrop-filter: blur(10px);
+        }
+
+        #sidebar.hidden {
+            transform: translateX(-100%);
+        }
+
+        /* Stealth Toggle Button */
+        #menu-toggle {
+            position: absolute;
+            top: 20px;
+            left: 280px; 
+            z-index: 11;
+            background: var(--glass-bg);
+            border: 1px solid var(--neon-cyan);
+            color: var(--neon-cyan);
+            padding: 10px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: opacity 0.5s, left 0.4s;
+            opacity: 1; /* Managed by JavaScript */
+        }
+
+        #sidebar.hidden + #menu-toggle {
+            left: 20px;
+        }
+
+        h1 {
+            font-size: 1.2rem;
+            color: var(--neon-pink);
+            text-shadow: 0 0 10px var(--neon-pink);
+            text-align: center;
+            margin-bottom: 30px;
+            letter-spacing: 2px;
+        }
+
+        .nav-btn {
+            background: transparent;
+            border: 1px solid var(--neon-cyan);
+            color: var(--neon-cyan);
+            padding: 12px;
+            margin-bottom: 15px;
+            cursor: pointer;
+            font-family: inherit;
+            font-weight: bold;
+            transition: 0.3s;
+            text-align: left;
+            text-transform: uppercase;
+        }
+
+        .nav-btn:hover, .nav-btn.active {
+            background: var(--neon-cyan);
+            color: #000;
+            box-shadow: 0 0 15px var(--neon-cyan);
+        }
+
+        .fs-btn {
+            margin-top: 20px;
+            border-color: var(--neon-pink);
+            color: var(--neon-pink);
+        }
+
+        #placeholder {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: #444;
+            z-index: 0;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="sidebar">
+        <h1>NEON MUSIC VISUALIZER</h1>
+        
+        <button class="nav-btn" onclick="loadScene(this, 'Music-Visualizer-Neon-Drive.html')">Neon Drive</button>
+        <button class="nav-btn" onclick="loadScene(this, 'Music-Visualizer-Neon-City.html')">Neon City</button>
+        <button class="nav-btn" onclick="loadScene(this, 'Music-Visualizer-Bars-Circle.html')">Bars Circle</button>
+        <button class="nav-btn" onclick="loadScene(this, 'Music-Visualizer-Pulse-Tunnel.html')">Pulse Tunnel</button>
+
+        <button class="nav-btn fs-btn" onclick="toggleFullscreen()">FULLSCREEN [F]</button>
+    </div>
+
+    <button id="menu-toggle" onclick="toggleMenu()">☰ MENU [M]</button>
+
+    <div id="viewer-container">
+        <div id="placeholder">SELECT A MODULE TO INITIATE</div>
+        <iframe id="main-frame" src="" allow="microphone; display-capture"></iframe>
+    </div>
+
+    <script>
+        const sidebar = document.getElementById('sidebar');
+        const frame = document.getElementById('main-frame');
+        const toggleBtn = document.getElementById('menu-toggle');
+        let hideTimeout;
+
+        function loadScene(btn, fileName) {
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('placeholder').style.display = 'none';
+            frame.src = fileName;
+        }
+
+        function toggleMenu() {
+            sidebar.classList.toggle('hidden');
+            // Show button immediately on toggle
+            showUI(); 
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        // Auto-hide Logic
+        function showUI() {
+            toggleBtn.style.opacity = "1";
+            toggleBtn.style.cursor = "pointer";
+            
+            clearTimeout(hideTimeout);
+            
+            // Only hide if the menu itself is closed
+            if (sidebar.classList.contains('hidden')) {
+                hideTimeout = setTimeout(() => {
+                    toggleBtn.style.opacity = "0";
+                    toggleBtn.style.cursor = "none";
+                }, 3000);
+            }
+        }
+
+        // Listen for mouse movement to wake up the button
+        window.addEventListener('mousemove', showUI);
+
+        // Keyboard Shortcuts
+        document.addEventListener('keydown', (e) => {
+            const key = e.key.toLowerCase();
+            if (key === 'f') toggleFullscreen();
+            if (key === 'm') toggleMenu();
+            showUI();
+        });
+
+        // Initial call to set timeout
+        showUI();
+    </script>
+</body>
+</html>
