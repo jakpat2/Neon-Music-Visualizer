@@ -135,6 +135,8 @@
         <button class="nav-btn fs-btn" onclick="toggleFullscreen()">FULLSCREEN [F]</button>
     </div>
 
+    <div id="input-shield" style="position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 5; display: none; cursor: none !important;"></div>
+
     <button id="menu-toggle" onclick="toggleMenu()">☰ MENU [M]</button>
 
     <div id="viewer-container">
@@ -156,10 +158,17 @@
         }
 
         function toggleMenu() {
-            sidebar.classList.toggle('hidden');
-            // Show button immediately on toggle
-            showUI(); 
-        }
+    sidebar.classList.toggle('hidden');
+    
+    // Move the button position based on the menu state
+    if (sidebar.classList.contains('hidden')) {
+        toggleBtn.style.left = '20px'; // Move to corner
+    } else {
+        toggleBtn.style.left = '280px'; // Move next to sidebar
+    }
+    
+    showUI(); 
+}
 
         function toggleFullscreen() {
             if (!document.fullscreenElement) {
@@ -171,19 +180,23 @@
 
         // Auto-hide Logic
         function showUI() {
-            toggleBtn.style.opacity = "1";
-            toggleBtn.style.cursor = "pointer";
-            
-            clearTimeout(hideTimeout);
-            
-            // Only hide if the menu itself is closed
-            if (sidebar.classList.contains('hidden')) {
-                hideTimeout = setTimeout(() => {
-                    toggleBtn.style.opacity = "0";
-                    toggleBtn.style.cursor = "none";
-                }, 3000);
-            }
-        }
+    const shield = document.getElementById('input-shield');
+    clearTimeout(hideTimeout);
+    
+    // Bring everything back
+    toggleBtn.style.opacity = "1";
+    toggleBtn.style.pointerEvents = "auto";
+    shield.style.display = "none"; // Hide shield so you can click the menu
+
+    // Only start the countdown to hide if the sidebar is closed
+    if (sidebar.classList.contains('hidden')) {
+        hideTimeout = setTimeout(() => {
+            toggleBtn.style.opacity = "0";
+            toggleBtn.style.pointerEvents = "none";
+            shield.style.display = "block"; // Show shield to "capture" and hide cursor
+        }, 3000);
+    }
+}
 
         // Listen for mouse movement to wake up the button
         window.addEventListener('mousemove', showUI);
@@ -196,6 +209,9 @@
             showUI();
         });
 
+        // Ensure moving the mouse over the shield and the Hub also wakes up the UI
+window.addEventListener('mousemove', showUI);
+document.getElementById('input-shield').addEventListener('mousemove', showUI);
         // Initial call to set timeout
         showUI();
     </script>
