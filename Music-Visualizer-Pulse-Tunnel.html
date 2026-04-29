@@ -38,9 +38,10 @@
     <script type="module">
         import * as THREE from 'three';
 
-        let scene, camera, renderer, analyser, dataArray;
-        let frames = [];
+        let scene, camera, renderer, analyser, dataArray, instancedMesh;
         const COUNT = 20;
+        const dummy = new THREE.Object3D(); // Helper for matrix calcs
+        const color = new THREE.Color();
 
         function init3D() {
             scene = new THREE.Scene();
@@ -49,29 +50,22 @@
             camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
             camera.position.z = 15;
 
-            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Cap pixel ratio for performance
             renderer.setSize(window.innerWidth, window.innerHeight);
             document.body.appendChild(renderer.domElement);
 
-            // Create Hexagonal Frames
-            // Using a ring with 6 segments = Hexagon
-            const geometry = new THREE.TorusGeometry(8, 0.05, 16, 6);
+            // geometry: Hexagon
+            const geometry = new THREE.TorusGeometry(8, 0.05, 8, 6);
             
-            for (let i = 0; i < COUNT; i++) {
-                const material = new THREE.MeshBasicMaterial({ 
-                    color: 0x00f2ff,
-                    transparent: true,
-                    opacity: 1 - (i / COUNT) 
-                });
-                const frame = new THREE.Mesh(geometry, material);
-                frame.position.z = -i * 3;
-                scene.add(frame);
-                frames.push(frame);
-            }
+            // Only ONE material for all 20 frames
+            const material = new THREE.MeshBasicMaterial({ 
+                transparent: true,
+                opacity: 0.8
+            });
 
-            const light = new THREE.PointLight(0xffffff, 50);
-            light.position.set(0, 0, 10);
-            scene.add(light);
+            instancedMesh = new THREE.InstancedMesh(geometry, material, COUNT);
+            scene.add(instancedMesh);
         }
 
         window.launch = async (mode) => {
@@ -86,8 +80,7 @@
                 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 const source = audioCtx.createMediaStreamSource(stream);
                 analyser = audioCtx.createAnalyser();
-                analyser.fftSize = 512;
-                analyser.smoothingTimeConstant = 0.75; // Balanced smoothing
+                analyser.fftSize = 256;
                 source.connect(analyser);
                 dataArray = new Uint8Array(analyser.frequencyBinCount);
 
@@ -101,27 +94,33 @@
             requestAnimationFrame(animate);
             analyser.getByteFrequencyData(dataArray);
 
-            const time = Date.now() * 0.001;
+            const time = performance.now() * 0.001;
 
-            frames.forEach((frame, i) => {
-                // Audio data - each frame picks a frequency further down the line
-                const freqIndex = Math.floor(i * 2);
+            for (let i = 0; i < COUNT; i++) {
+                const freqIndex = Math.floor(i * 1.5);
                 const volume = dataArray[freqIndex] / 255;
                 
-                // 1. Subtle rhythmic scaling
+                // Set Position, Rotation, Scale on the 'dummy' object
                 const s = 1 + (volume * 1.2);
-                frame.scale.set(s, s, 1);
+                dummy.scale.set(s, s, 1);
+                dummy.position.set(0, 0, -i * 3);
+                dummy.rotation.z = time * 0.1 + (i * 0.05);
+                
+                // Update the matrix for this specific instance
+                dummy.updateMatrix();
+                instancedMesh.setMatrixAt(i, dummy.matrix);
 
-                // 2. Slow rotation for style
-                frame.rotation.z = time * 0.1 + (i * 0.05);
+                // Update Color per instance
+                const hue = (0.5 + (volume * 0.3)) % 1;
+                color.setHSL(hue, 1, 0.5);
+                instancedMesh.setColorAt(i, color);
+            }
 
-                // 3. Dynamic Color (Shift from Blue to Pink)
-                const hue = 0.5 + (volume * 0.3);
-                frame.material.color.setHSL(hue % 1, 1, 0.5);
-                frame.material.opacity = (1 - (i / COUNT)) * (0.5 + volume);
-            });
+            // Tell Three.js that instances changed
+            instancedMesh.instanceMatrix.needsUpdate = true;
+            if (instancedMesh.instanceColor) instancedMesh.instanceColor.needsUpdate = true;
 
-            // Camera subtle "floating" effect
+            // Camera subtle "floating"
             camera.position.x = Math.sin(time * 0.5) * 0.5;
             camera.position.y = Math.cos(time * 0.5) * 0.5;
 
